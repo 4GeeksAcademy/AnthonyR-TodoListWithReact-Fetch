@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 //create your first component
 const Card = (props) => {
@@ -37,6 +37,44 @@ const Card = (props) => {
   let [newtask, setNewTask] = useState("");
   let [hoveredTask, setHoveredTask] = useState(null);
 
+  const fetchTask = () => {
+    fetch("https://playground.4geeks.com/todo/users/tony")
+      .then((response) => response.json())
+      .then((dataUser) => {
+        if (Array.isArray(dataUser.todos)) {
+          setTaskList(dataUser.todos);
+        }
+      })
+      .catch((error) => console.error("Fetch error:", error));
+  };
+
+  useEffect(() => {
+    fetchTask();
+  }, []);
+
+  const handleAddTask = (e) => {
+    if (e.key === "Enter" && e.target.value !== "") {
+      const task = {
+        label: newtask,
+        done: false,
+      };
+
+      fetch("https://playground.4geeks.com/todo/todos/tony", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(task),
+      })
+        .then((response) => response.json())
+        .then(() => {
+          setNewTask("");
+          fetchTask();
+        })
+        .catch((error) => console.error("Error al agregar la tarea:", error));
+    }
+  };
+
   return (
     <>
       <div className="card" style={props.cardStyle}>
@@ -52,16 +90,7 @@ const Card = (props) => {
               onChange={(e) => {
                 setNewTask(e.target.value);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (e.target.value !== "") {
-                    setTaskList((prev) => {
-                      return [...prev, newtask];
-                    });
-                    setNewTask("");
-                  }
-                }
-              }}
+              onKeyDown={handleAddTask}
             />
           </li>
           {taskList.length === 0 ? (
@@ -72,21 +101,22 @@ const Card = (props) => {
             taskList.map((task, idx) => {
               return (
                 <li
-                  key={idx}
+                  key={task.id}
                   className="list-group-item d-flex justify-content-between align-items-center px-4"
                   style={{ color: "#797979" }}
                   onMouseEnter={() => {
-                    setHoveredTask(idx);
+                    setHoveredTask(task.id);
                   }}
                   onMouseLeave={() => {
                     setHoveredTask(null);
                   }}
                 >
-                  {task}
+                  {task.label}
                   <i
                     className="fa-solid fa-x exis"
                     style={{
-                      visibility: hoveredTask === idx ? "visible" : "hidden",
+                      visibility:
+                        hoveredTask === task.id ? "visible" : "hidden",
                       cursor: "pointer",
                       color: "#f0cace",
                       fontWeight: "100",
