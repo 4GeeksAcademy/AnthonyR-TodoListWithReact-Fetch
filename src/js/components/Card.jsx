@@ -37,9 +37,24 @@ const Card = (props) => {
   let [newtask, setNewTask] = useState("");
   let [hoveredTask, setHoveredTask] = useState(null);
 
+  const createUser = () => {
+    fetch("https://playground.4geeks.com/todo/users/tony", {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => console.log(data))
+      .catch((error) => console.error(error));
+  };
+
   const fetchTask = () => {
     fetch("https://playground.4geeks.com/todo/users/tony")
-      .then((response) => response.json())
+      .then((response) => {
+        if (response.status === 404) {
+          createUser();
+        }
+
+        return response.json();
+      })
       .then((dataUser) => {
         if (Array.isArray(dataUser.todos)) {
           setTaskList(dataUser.todos);
@@ -48,31 +63,52 @@ const Card = (props) => {
       .catch((error) => console.error("Fetch error:", error));
   };
 
+  const addTask = () => {
+    const task = {
+      label: newtask,
+      done: false,
+    };
+    fetch("https://playground.4geeks.com/todo/todos/tony", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(task),
+    })
+      .then((response) => response.json())
+      .then(() => {
+        setNewTask("");
+        fetchTask();
+      })
+      .catch((error) => console.error("Error al agregar la tarea:", error));
+  };
+
   useEffect(() => {
     fetchTask();
   }, []);
 
   const handleAddTask = (e) => {
     if (e.key === "Enter" && e.target.value !== "") {
-      const task = {
-        label: newtask,
-        done: false,
-      };
-
-      fetch("https://playground.4geeks.com/todo/todos/tony", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(task),
-      })
-        .then((response) => response.json())
-        .then(() => {
-          setNewTask("");
-          fetchTask();
-        })
-        .catch((error) => console.error("Error al agregar la tarea:", error));
+      addTask();
     }
+  };
+
+  const handleDeleteTask = (e) => {
+    const taskDeleteId = e.target.parentNode.id;
+
+    fetch(`https://playground.4geeks.com/todo/todos/${taskDeleteId}`, {
+      method: "DELETE",
+    })
+      .then((response) => {
+        console.log(response);
+
+        if (!response.ok) throw new Error("Error al eliminar la tarea");
+        return;
+      })
+      .then(() => {
+        fetchTask(); // refrescar tareas desde la API
+      })
+      .catch((error) => console.error("Error al eliminar la tarea:", error));
   };
 
   return (
@@ -98,10 +134,11 @@ const Card = (props) => {
               There are no pending tasks, add tasks...
             </li>
           ) : (
-            taskList.map((task, idx) => {
+            taskList.map((task) => {
               return (
                 <li
                   key={task.id}
+                  id={task.id}
                   className="list-group-item d-flex justify-content-between align-items-center px-4"
                   style={{ color: "#797979" }}
                   onMouseEnter={() => {
@@ -113,19 +150,14 @@ const Card = (props) => {
                 >
                   {task.label}
                   <i
-                    className="fa-solid fa-x exis"
+                    className="fa-solid fa-x equis"
                     style={{
                       visibility:
                         hoveredTask === task.id ? "visible" : "hidden",
                       cursor: "pointer",
-                      color: "#f0cace",
                       fontWeight: "100",
                     }}
-                    onClick={(e) => {
-                      setTaskList((prev) =>
-                        prev.filter((task, i) => i !== idx)
-                      );
-                    }}
+                    onClick={handleDeleteTask}
                   ></i>
                 </li>
               );
